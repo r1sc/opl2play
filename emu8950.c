@@ -6,7 +6,6 @@
 #include "emu8950.h"
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #ifndef INLINE
@@ -280,41 +279,6 @@ static void initializeTables() {
 #define CAR(o, x) (&(o)->slot[((x) << 1) | 1])
 #define BIT(s, b) (((s) >> (b)) & 1)
 
-#if OPL_DEBUG
-static void _debug_print_patch(OPL_SLOT* slot) {
-	OPL_PATCH* p = slot->patch;
-	printf("[slot#%d am:%d pm:%d eg:%d kr:%d ml:%d kl:%d tl:%d ws:%d fb:%d A:%d D:%d S:%d R:%d]\n", slot->number, //
-		p->AM, p->PM, p->EG, p->KR, p->ML,                                                                     //
-		p->KL, p->TL, p->WS, p->FB,                                                                            //
-		p->AR, p->DR, p->SL, p->RR);
-}
-
-static char* _debug_eg_state_name(OPL_SLOT* slot) {
-	switch (slot->eg_state) {
-	case ATTACK:
-		return "attack";
-	case DECAY:
-		return "decay";
-	case SUSTAIN:
-		return "sustain";
-	case RELEASE:
-		return "release";
-	case DAMP:
-		return "damp";
-	default:
-		return "unknown";
-	}
-}
-
-static INLINE void _debug_print_slot_info(OPL_SLOT* slot) {
-	char* name = _debug_eg_state_name(slot);
-	_debug_print_patch(slot);
-	printf("[slot#%d state:%s fnum:%03x rate:%d-%d]\n", slot->number, name, slot->blk_fnum, slot->eg_rate_h,
-		slot->eg_rate_l);
-	fflush(stdout);
-}
-#endif
-
 static INLINE int get_parameter_rate(OPL_SLOT* slot) {
 	switch (slot->eg_state) {
 	case ATTACK:
@@ -378,13 +342,6 @@ static void commit_slot_update(OPL_SLOT* slot, uint8_t notesel) {
 			}
 		}
 	}
-
-#if OPL_DEBUG
-	if (slot->last_eg_state != slot->eg_state) {
-		_debug_print_slot_info(slot);
-		slot->last_eg_state = slot->eg_state;
-	}
-#endif
 
 	slot->update_requests = 0;
 }
@@ -759,18 +716,64 @@ static INLINE int16_t calc_fm(OPL* opl, int ch) {
 	return calc_slot_car(opl, ch, calc_slot_mod(opl, ch));
 }
 
-static void update_output(OPL* opl) {
-	int16_t* out;
+/***********************************************************
+
+				   External Interfaces
+
+***********************************************************/
+
+void OPL_reset(OPL* opl) {
+	if (!table_initialized) {
+		initializeTables();
+	}
+
+	opl->mask = 0;
+	opl->mix_out[0] = 0;
+	opl->mix_out[1] = 0;
+
+	opl->notesel = 0;
+
+	opl->pm_phase = 0;
+	opl->am_phase = 0;
+
+	opl->noise = 1;
+	opl->mask = 0;
+
+	opl->rhythm_mode = 0;
+	opl->slot_key_status = 0;
+	opl->eg_counter = 0;
+
 	int i;
+	for (i = 0; i < 18; i++) {
+		reset_slot(&opl->slot[i], i);
+	}
+
+	for (i = 0; i < 9; i++) {
+		opl->ch_alg[i] = 0;
+	}
+
+	for (i = 0; i < 0x100; i++) {
+		opl->reg[i] = 0;
+	}
+	opl->reg[0x04] = 0x18; // MASK_EOS | MASK_BUF_RDY
+
+	opl->pm_dphase = PM_DP_WIDTH / (1024 * 8);
+
+	for (i = 0; i < 15; i++) {
+		opl->ch_out[i] = 0;
+	}
+}
+
+int16_t OPL_calc(OPL* opl) {
 
 	update_ampm(opl);
 	update_short_noise(opl);
 	update_slots(opl);
 
-	out = opl->ch_out;
+	int16_t* out = opl->ch_out;
 
 	/* CH1-6 */
-	for (i = 0; i < 6; i++) {
+	for (int i = 0; i < 6; i++) {
 		if (!(opl->mask & OPL_MASK_CH(i))) {
 			out[i] = _MO(calc_fm(opl, i));
 		}
@@ -821,93 +824,13 @@ static void update_output(OPL* opl) {
 	}
 	update_noise(opl, 2);
 
-	///* ADPCM */
-	//if (opl->adpcm != NULL && !(opl->mask & OPL_MASK_ADPCM)) {
-	//	out[14] = OPL_ADPCM_calc(opl->adpcm);
-	//}
-}
+	/* Mix output */
 
-INLINE static void mix_output(OPL* opl) {
-	int16_t out = 0;
-	int i;
-	for (i = 0; i < 15; i++) {
-		out += opl->ch_out[i];
+	int16_t mixed = 0;
+	for (int i = 0; i < 15; i++) {
+		mixed += opl->ch_out[i];
 	}
-	opl->mix_out[0] = out;
-}
-
-/***********************************************************
-
-				   External Interfaces
-
-***********************************************************/
-
-OPL* OPL_new() {
-	OPL* opl;
-
-	if (!table_initialized) {
-		initializeTables();
-	}
-
-	opl = (OPL*)calloc(sizeof(OPL), 1);
-	if (opl == NULL)
-		return NULL;
-
-	opl->mask = 0;
-	opl->mix_out[0] = 0;
-	opl->mix_out[1] = 0;
-
-	OPL_reset(opl);
-
-	return opl;
-}
-
-void OPL_delete(OPL* opl) {
-	free(opl);
-}
-
-void OPL_reset(OPL* opl) {
-	int i;
-
-	if (!opl)
-		return;
-
-	opl->notesel = 0;
-
-	opl->pm_phase = 0;
-	opl->am_phase = 0;
-
-	opl->noise = 1;
-	opl->mask = 0;
-
-	opl->rhythm_mode = 0;
-	opl->slot_key_status = 0;
-	opl->eg_counter = 0;
-
-	for (i = 0; i < 18; i++) {
-		reset_slot(&opl->slot[i], i);
-	}
-
-	for (i = 0; i < 9; i++) {
-		opl->ch_alg[i] = 0;
-	}
-
-	for (i = 0; i < 0x100; i++) {
-		opl->reg[i] = 0;
-	}
-	opl->reg[0x04] = 0x18; // MASK_EOS | MASK_BUF_RDY
-
-	opl->pm_dphase = PM_DP_WIDTH / (1024 * 8);
-
-	for (i = 0; i < 15; i++) {
-		opl->ch_out[i] = 0;
-	}
-}
-
-int16_t OPL_calc(OPL* opl) {
-	update_output(opl);
-	mix_output(opl);
-	return opl->mix_out[0];
+	return mixed;
 }
 
 void OPL_writeReg(OPL* opl, uint32_t reg, uint8_t data) {

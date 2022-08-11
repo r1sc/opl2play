@@ -7,7 +7,6 @@
 extern "C" {
 #endif
 
-#define OPL_DEBUG 0
 
 	/* voice data */
 	typedef struct __OPL_PATCH {
@@ -60,18 +59,10 @@ extern "C" {
 		int16_t eg_out;           /* eg output */
 
 		uint32_t update_requests; /* flags to debounce update */
-
-#if OPL_DEBUG
-		uint8_t last_eg_state;
-#endif
 	} OPL_SLOT;
 
 	typedef struct __OPL {
 		uint8_t notesel;
-
-		uint32_t inp_step;
-		uint32_t out_step;
-		uint32_t out_time;
 
 		uint8_t reg[0x100];
 		uint8_t test_flag;
@@ -105,22 +96,8 @@ extern "C" {
 
 	} OPL;
 
-	OPL* OPL_new();
-	void OPL_delete(OPL*);
-
 	void OPL_reset(OPL*);
-
-	/**
-	 * Set OPL chip type.
-	 * @param type 0:Y8950, 1:YM3526, 2:YM3812
-	 */
-	void OPL_setChipType(OPL* opl, uint8_t type);
-
 	void OPL_writeReg(OPL* opl, uint32_t reg, uint8_t val);
-
-	/**
-	 * Calculate sample
-	 */
 	int16_t OPL_calc(OPL* opl);	
 
 #ifdef __cplusplus
