@@ -67,8 +67,6 @@ extern "C" {
 	} OPL_SLOT;
 
 	typedef struct __OPL {
-		uint8_t csm_mode;
-		uint8_t csm_key_count;
 		uint8_t notesel;
 
 		uint32_t inp_step;

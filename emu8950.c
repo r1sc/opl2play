@@ -438,10 +438,6 @@ static INLINE void update_key_status(OPL* opl) {
 	uint32_t updated_status;
 	int ch;
 
-	if (opl->csm_mode && opl->csm_key_count) {
-		new_slot_key_status = 0x3ffff;
-	}
-
 	for (ch = 0; ch < 9; ch++)
 		if (opl->reg[0xB0 + ch] & 0x20)
 			new_slot_key_status |= 3 << (ch * 2);
@@ -771,28 +767,11 @@ static void latch_timer2(OPL* opl) {
 	opl->timer2_counter = opl->reg[0x03] << 4;
 }
 
-static void csm_key_on(OPL* opl) {
-	opl->csm_key_count = 1;
-	update_key_status(opl);
-}
-
-static void csm_key_off(OPL* opl) {
-	opl->csm_key_count = 0;
-	update_key_status(opl);
-}
-
-static void update_timer(OPL* opl) {
-	if (opl->csm_mode && 0 < opl->csm_key_count) {
-		csm_key_off(opl);
-	}
-
+static void update_timer(OPL* opl) {	
 	if (opl->reg[0x04] & 0x01) {
 		opl->timer1_counter++;
 		if (opl->timer1_counter >> 10) {
 			opl->status |= 0x40; // timer1 overflow
-			if (opl->csm_mode) {
-				csm_key_on(opl);
-			}
 			if (opl->timer1_func) {
 				opl->timer1_func(opl->timer1_user_data);
 			}
@@ -932,8 +911,6 @@ void OPL_reset(OPL* opl) {
 	if (!opl)
 		return;
 
-	opl->csm_mode = 0;
-	opl->csm_key_count = 0;
 	opl->notesel = 0;
 
 	opl->status = 0;
@@ -1020,7 +997,6 @@ void OPL_writeReg(OPL* opl, uint32_t reg, uint8_t data) {
 	else if (0x07 <= reg && reg <= 0x12) {
 
 		if (reg == 0x08) {
-			opl->csm_mode = (data >> 7) & 1;
 			opl->notesel = (data >> 6) & 1;
 		}
 
