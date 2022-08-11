@@ -4,17 +4,20 @@
 #include <math.h>
 
 #include "waveout.h"
-#include "opl3.h"
-
+//#include "opl3.h"
+#include "emu8950.h"
 
 int main() {
 	unsigned int buffer_size = 8000;
-	unsigned int sample_rate = 22050;
+	unsigned int sample_rate = 44100;
 
 	waveout_initialize(sample_rate, buffer_size);
 
-	opl3_chip chip;
-	OPL3_Reset(&chip, sample_rate);
+	/*opl3_chip chip;
+	OPL3_Reset(&chip, sample_rate);*/
+
+	OPL* opl = OPL_new();
+	OPL_reset(opl);
 
 	FILE* file = fopen("dream.vgm", "rb");
 
@@ -38,9 +41,10 @@ int main() {
 		if (buffer != NULL) {
 			int16_t* buffer_end = buffer + buffer_size;
 			while(buffer < buffer_end) {
-				OPL3_GenerateResampled(&chip, buffer);
-				
-				buffer+=2; // left and right channel
+				//OPL3_GenerateResampled(&chip, buffer);
+				int16_t sample = OPL_calc(opl);
+				*buffer++ = sample;
+				//sample = OPL_calc(opl);
 
 				if (wait == 0) {
 					uint8_t command;
@@ -49,7 +53,8 @@ int main() {
 					if (command == 0x5A) {
 						uint8_t address_value[2];
 						fread(address_value, 1, 2, file);
-						OPL3_WriteRegBuffered(&chip, address_value[0], address_value[1]);
+						//OPL3_WriteRegBuffered(&chip, address_value[0], address_value[1]);
+						OPL_writeReg(opl, (uint32_t)address_value[0], address_value[1]);
 					}
 					else if (command == 0x5E) {
 						uint8_t address_value[2];
@@ -64,13 +69,13 @@ int main() {
 					else if (command == 0x61) {
 						uint16_t samples;
 						fread(&samples, 2, 1, file);
-						wait += samples >> 1;
+						wait += samples;
 					}
 					else if (command == 0x62) {
-						wait += 735 >> 1;
+						wait += 735;
 					}
 					else if (command == 0x63) {
-						wait += 882 >> 1;
+						wait += 882;
 					}
 					else if (command == 0x66) {
 						if (loop_offset != 0) {
@@ -82,7 +87,7 @@ int main() {
 					}
 					else if ((command & 0x70) == 0x70) {
 						uint8_t num_waits = (wait & 0x0F) + 1;
-						wait += num_waits >> 1;
+						wait += num_waits;
 					}
 				}
 				else {

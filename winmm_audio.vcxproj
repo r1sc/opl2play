@@ -139,12 +139,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="emu8950.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="opl3.c" />
     <ClCompile Include="synth.c" />
     <ClCompile Include="waveout.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="emu8950.h" />
     <ClInclude Include="opl3.h" />
     <ClInclude Include="strings.h" />
     <ClInclude Include="synth.h" />

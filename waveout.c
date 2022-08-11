@@ -86,7 +86,7 @@ void CALLBACK waveOutProc(
 }
 
 void waveout_initialize(unsigned int sample_rate, unsigned buffer_size) {
-	WORD nChannels = 2;
+	WORD nChannels = 1;
 	WORD wBitsPerSample = 16;
 	WORD nBlockAlign = (nChannels * wBitsPerSample) / 8;
 	DWORD nAvgBytesPerSec = sample_rate * nBlockAlign;
