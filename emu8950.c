@@ -525,7 +525,7 @@ static INLINE void update_rhythm_mode(OPL* opl) {
 	opl->rhythm_mode = new_rhythm_mode;
 }
 
-static void update_ampm(OPL* opl) {
+static INLINE void update_ampm(OPL* opl) {
 	const uint32_t pm_inc = (opl->test_flag & 8) ? opl->pm_dphase << 10 : opl->pm_dphase;
 	const uint32_t am_inc = (opl->test_flag & 8) ? 64 : 1;
 	if (opl->test_flag & 2) {
@@ -539,7 +539,7 @@ static void update_ampm(OPL* opl) {
 	opl->lfo_am = am_table[(opl->am_phase >> 6) % sizeof(am_table)] >> (opl->am_mode ? 0 : 2);
 }
 
-static void update_noise(OPL* opl, int cycle) {
+static INLINE void update_noise(OPL* opl, int cycle) {
 	int i;
 	for (i = 0; i < cycle; i++) {
 		if (opl->noise & 1) {
@@ -549,7 +549,7 @@ static void update_noise(OPL* opl, int cycle) {
 	}
 }
 
-static void update_short_noise(OPL* opl) {
+static INLINE void update_short_noise(OPL* opl) {
 	const uint32_t pg_hh = opl->slot[SLOT_HH].pg_out;
 	const uint32_t pg_cym = opl->slot[SLOT_CYM].pg_out;
 
@@ -652,7 +652,7 @@ static INLINE void calc_envelope(OPL_SLOT* slot, uint16_t eg_counter, uint8_t te
 	}
 }
 
-static void update_slots(OPL* opl) {
+static INLINE void update_slots(OPL* opl) {
 	int i;
 	opl->eg_counter++;
 
@@ -759,44 +759,10 @@ static INLINE int16_t calc_fm(OPL* opl, int ch) {
 	return calc_slot_car(opl, ch, calc_slot_mod(opl, ch));
 }
 
-static void latch_timer1(OPL* opl) {
-	opl->timer1_counter = opl->reg[0x02] << 2;
-}
-
-static void latch_timer2(OPL* opl) {
-	opl->timer2_counter = opl->reg[0x03] << 4;
-}
-
-static void update_timer(OPL* opl) {	
-	if (opl->reg[0x04] & 0x01) {
-		opl->timer1_counter++;
-		if (opl->timer1_counter >> 10) {
-			opl->status |= 0x40; // timer1 overflow
-			if (opl->timer1_func) {
-				opl->timer1_func(opl->timer1_user_data);
-			}
-			latch_timer1(opl);
-		}
-	}
-
-	if (opl->reg[0x04] & 0x02) {
-		opl->timer2_counter++;
-		if (opl->timer2_counter >> 12) {
-			opl->status |= 0x20; // timer2 overflow
-			if (opl->timer2_func) {
-				opl->timer2_func(opl->timer2_user_data);
-			}
-			latch_timer2(opl);
-		}
-	}
-
-}
-
 static void update_output(OPL* opl) {
 	int16_t* out;
 	int i;
 
-	update_timer(opl);
 	update_ampm(opl);
 	update_short_noise(opl);
 	update_slots(opl);
@@ -887,14 +853,9 @@ OPL* OPL_new() {
 	if (opl == NULL)
 		return NULL;
 
-	//opl->adpcm = NULL;
 	opl->mask = 0;
 	opl->mix_out[0] = 0;
 	opl->mix_out[1] = 0;
-	opl->timer1_func = NULL;
-	opl->timer1_user_data = NULL;
-	opl->timer2_func = NULL;
-	opl->timer2_user_data = NULL;
 
 	OPL_reset(opl);
 
@@ -912,10 +873,6 @@ void OPL_reset(OPL* opl) {
 		return;
 
 	opl->notesel = 0;
-
-	opl->status = 0;
-	opl->timer1_counter = 0;
-	opl->timer2_counter = 0;
 
 	opl->pm_phase = 0;
 	opl->am_phase = 0;
@@ -943,11 +900,6 @@ void OPL_reset(OPL* opl) {
 	opl->pm_dphase = PM_DP_WIDTH / (1024 * 8);
 
 	for (i = 0; i < 15; i++) {
-		opl->pan[i] = 3;
-		opl->pan_fine[i][1] = opl->pan_fine[i][0] = 1.0f;
-	}
-
-	for (i = 0; i < 15; i++) {
 		opl->ch_out[i] = 0;
 	}
 }
@@ -969,11 +921,7 @@ void OPL_writeReg(OPL* opl, uint32_t reg, uint8_t data) {
 
 	if ((reg == 0x04) && (data & 0x80)) {
 		// IRQ RESET
-		opl->status = 0;
 		opl->reg[0x04] &= 0x7f;
-		/*if (opl->adpcm) {
-			OPL_ADPCM_resetStatus(opl->adpcm);
-		}*/
 		return;
 	}
 
@@ -985,25 +933,15 @@ void OPL_writeReg(OPL* opl, uint32_t reg, uint8_t data) {
 
 	}
 	else if (reg == 0x04) {
-
-		if (data & 0x01) {
+		/*if (data & 0x01) {
 			latch_timer1(opl);
 		}
 		if (data & 0x02) {
 			latch_timer2(opl);
-		}
-
-	}
-	else if (0x07 <= reg && reg <= 0x12) {
-
-		if (reg == 0x08) {
-			opl->notesel = (data >> 6) & 1;
-		}
-
-		/*if (opl->adpcm != NULL && opl->chip_type == TYPE_Y8950) {
-			OPL_ADPCM_writeReg(opl->adpcm, reg, data);
 		}*/
-
+	}
+	else if (reg == 0x08) {
+		opl->notesel = (data >> 6) & 1;
 	}
 	else if (0x20 <= reg && reg < 0x40) {
 

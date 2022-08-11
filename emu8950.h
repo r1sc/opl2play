@@ -93,9 +93,6 @@ extern "C" {
 		OPL_SLOT slot[18];
 		uint8_t ch_alg[9]; // alg for each channels
 
-		uint8_t pan[16];
-		float pan_fine[16][2];
-
 		uint32_t mask;
 		uint8_t am_mode;
 		uint8_t pm_mode;
@@ -105,14 +102,6 @@ extern "C" {
 		int16_t ch_out[15];
 
 		int16_t mix_out[2];
-
-		uint32_t timer1_counter; //  80us counter
-		uint32_t timer2_counter; // 320us counter
-		void* timer1_user_data;
-		void* timer2_user_data;
-		void (*timer1_func)(void* user);
-		void (*timer2_func)(void* user);
-		uint8_t status;
 
 	} OPL;
 
