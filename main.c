@@ -4,22 +4,66 @@
 #include <math.h>
 
 #include "waveout.h"
-#include "opl3.h"
 #include "emu8950.h"
+//#include "opl3.h"
+
+BOOL running = TRUE;
+
+BOOL WINAPI consoleHandler(DWORD signal) {
+	if (signal == CTRL_C_EVENT)
+		running = FALSE; // do cleanup
+
+	return TRUE;
+}
 
 int main() {
 	unsigned int buffer_size = 8000;
 	unsigned int sample_rate = 49716;
 
+	if (!SetConsoleCtrlHandler(consoleHandler, TRUE)) {
+		printf("\nERROR: Could not set control handler");
+		return 1;
+	}
+
+
 	waveout_initialize(sample_rate, buffer_size);
 
-	opl3_chip chip;
-	OPL3_Reset(&chip, sample_rate);
+	//opl3_chip chip;
+	//OPL3_Reset(&chip, sample_rate);
 
 	OPL opl;
 	OPL_reset(&opl);
 
 	FILE* file = fopen("dream.vgm", "rb");
+
+	uint32_t gd3_offset = 0;
+	fseek(file, 0x14, SEEK_SET);
+	fread(&gd3_offset, 4, 1, file);
+	fseek(file, gd3_offset, SEEK_CUR);
+
+	fseek(file, 4, SEEK_CUR); // Skip version
+	uint32_t gd3_size = 0;
+	fread(&gd3_size, 4, 1, file);
+
+	unsigned short* gd3_data = (unsigned short*)malloc(gd3_size);
+	fread(gd3_data, gd3_size, 1, file);
+
+	uint32_t gd3_size_half = gd3_size / 2;
+	char* gd3_ascii = (char*)malloc(gd3_size_half);
+	char* gd3_parts[12];
+	gd3_parts[0] = gd3_ascii;
+
+	uint8_t part_no = 1;
+	for (size_t i = 0; i < gd3_size_half; i++) {
+		unsigned short char_16 = gd3_data[i];
+		gd3_ascii[i] = (unsigned char)char_16;
+		if (char_16 == 0) {
+			gd3_parts[part_no++] = gd3_ascii + i+1;
+		}
+	}
+	printf("Playing %s - %s by %s (%s)\n(CTRL-C to stop)\n", gd3_parts[2], gd3_parts[0], gd3_parts[6], gd3_parts[8]);
+	free(gd3_ascii);
+	free(gd3_data);
 
 	uint32_t loop_offset = 0;
 	fseek(file, 0x1C, SEEK_SET);
@@ -35,8 +79,8 @@ int main() {
 
 	size_t wait = 0;
 
-	while (1) {
-		
+
+	while (running) {		
 		int16_t* buffer = waveout_get_current_buffer();
 		if (buffer != NULL) {
 			int16_t* buffer_end = buffer + buffer_size;
@@ -45,8 +89,7 @@ int main() {
 				buffer += 2;*/
 				
 				int16_t sample = OPL_calc(&opl);
-				*buffer++ = sample;
-				
+				*buffer++ = sample;				
 
 				if (wait == 0) {
 					uint8_t command;

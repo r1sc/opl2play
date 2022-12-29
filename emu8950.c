@@ -304,7 +304,7 @@ enum SLOT_UPDATE_FLAG {
 
 static INLINE void request_update(OPL_SLOT* slot, int flag) { slot->update_requests |= flag; }
 
-static void commit_slot_update(OPL_SLOT* slot, uint8_t notesel) {
+static INLINE void commit_slot_update(OPL_SLOT* slot, uint8_t notesel) {
 
 	if (slot->update_requests & UPDATE_WS) {
 		slot->wave_table = wave_table_map[slot->patch->WS & 3];
@@ -346,26 +346,6 @@ static void commit_slot_update(OPL_SLOT* slot, uint8_t notesel) {
 	slot->update_requests = 0;
 }
 
-static void reset_slot(OPL_SLOT* slot, int number) {
-	slot->patch = &(slot->__patch);
-	memset(slot->patch, 0, sizeof(OPL_PATCH));
-	slot->number = number;
-	slot->type = number % 2;
-	slot->pg_keep = 0;
-	slot->wave_table = wave_table_map[0];
-	slot->pg_phase = 0;
-	slot->output[0] = 0;
-	slot->output[1] = 0;
-	slot->eg_state = RELEASE;
-	slot->eg_shift = 0;
-	slot->rks = 0;
-	slot->tll = 0;
-	slot->blk_fnum = 0;
-	slot->blk = 0;
-	slot->fnum = 0;
-	slot->pg_out = 0;
-	slot->eg_out = EG_MUTE;
-}
 
 static INLINE void slotOn(OPL* opl, int i) {
 	OPL_SLOT* slot = &opl->slot[i];
@@ -722,6 +702,27 @@ static INLINE int16_t calc_fm(OPL* opl, int ch) {
 
 ***********************************************************/
 
+static void reset_slot(OPL_SLOT* slot, int number) {
+	slot->patch = &(slot->__patch);
+	memset(slot->patch, 0, sizeof(OPL_PATCH));
+	slot->number = number;
+	slot->type = number % 2;
+	slot->pg_keep = 0;
+	slot->wave_table = wave_table_map[0];
+	slot->pg_phase = 0;
+	slot->output[0] = 0;
+	slot->output[1] = 0;
+	slot->eg_state = RELEASE;
+	slot->eg_shift = 0;
+	slot->rks = 0;
+	slot->tll = 0;
+	slot->blk_fnum = 0;
+	slot->blk = 0;
+	slot->fnum = 0;
+	slot->pg_out = 0;
+	slot->eg_out = EG_MUTE;
+}
+
 void OPL_reset(OPL* opl) {
 	if (!table_initialized) {
 		initializeTables();
@@ -763,6 +764,7 @@ void OPL_reset(OPL* opl) {
 		opl->ch_out[i] = 0;
 	}
 }
+
 
 int16_t OPL_calc(OPL* opl) {
 
