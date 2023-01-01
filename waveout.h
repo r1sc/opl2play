@@ -1,10 +1,26 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
+#include <deque>
 
-// Returns NULL if all buffers are full
-int16_t* waveout_get_current_buffer();
-void waveout_queue_buffer();
+class WaveoutDevice {
+	HWAVEOUT waveout;
 
-void waveout_initialize(unsigned int sample_rate, unsigned buffer_size);
-void waveout_free();
+	typedef std::vector<int16_t> Buffer;
+
+	std::vector<WAVEHDR> audio_headers;
+	std::vector<Buffer> buffers;
+	std::deque<size_t> queue;
+
+	void push_free_buffer(size_t element_index);
+
+public:
+	BOOL shutting_down = FALSE;
+
+	WaveoutDevice(size_t num_buffers, unsigned int sample_rate, unsigned int buffer_size);
+	~WaveoutDevice();
+	void onWaveOutProc(UINT uMsg, DWORD_PTR dwParam1, DWORD_PTR dwParam2);
+	void queue_buffer();
+	Buffer* get_current_buffer();
+};

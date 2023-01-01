@@ -24,6 +24,7 @@
     <ProjectGuid>{b1ea4653-8c1d-4923-b5af-34812250d661}</ProjectGuid>
     <RootNamespace>winmmaudio</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>opl2play</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -140,16 +141,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="emu8950.c" />
-    <ClCompile Include="main.c" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="opl3.c" />
-    <ClCompile Include="synth.c" />
-    <ClCompile Include="waveout.c" />
+    <ClCompile Include="waveout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emu8950.h" />
     <ClInclude Include="opl3.h" />
-    <ClInclude Include="strings.h" />
-    <ClInclude Include="synth.h" />
     <ClInclude Include="waveout.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

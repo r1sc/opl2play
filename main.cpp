@@ -2,10 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
+#include <iostream>
 
 #include "waveout.h"
 #include "emu8950.h"
-//#include "opl3.h"
 
 BOOL running = TRUE;
 
@@ -16,25 +16,23 @@ BOOL WINAPI consoleHandler(DWORD signal) {
 	return TRUE;
 }
 
-int main() {
-	unsigned int buffer_size = 8000;
-	unsigned int sample_rate = 49716;
+int main(const int argc, const char** argv) {
+	if (argc != 2) {
+		std::cout << "usage: opl2play.exe <path-to-vgm-file>" << std::endl;
+		return 1;
+	}
 
 	if (!SetConsoleCtrlHandler(consoleHandler, TRUE)) {
 		printf("\nERROR: Could not set control handler");
 		return 1;
+	}	
+
+	FILE* file;
+	auto err = fopen_s(&file, argv[1], "rb");
+	if (err) {
+		printf("Error: Failed to open file '%s'\n", argv[1]);
+		return 1;
 	}
-
-
-	waveout_initialize(sample_rate, buffer_size);
-
-	//opl3_chip chip;
-	//OPL3_Reset(&chip, sample_rate);
-
-	OPL opl;
-	OPL_reset(&opl);
-
-	FILE* file = fopen("dream.vgm", "rb");
 
 	uint32_t gd3_offset = 0;
 	fseek(file, 0x14, SEEK_SET);
@@ -61,7 +59,7 @@ int main() {
 			gd3_parts[part_no++] = gd3_ascii + i+1;
 		}
 	}
-	printf("Playing %s - %s by %s (%s)\n(CTRL-C to stop)\n", gd3_parts[2], gd3_parts[0], gd3_parts[6], gd3_parts[8]);
+	printf("%s - %s by %s (%s)\n(CTRL-C to stop)\n", gd3_parts[2], gd3_parts[0], gd3_parts[6], gd3_parts[8]);
 	free(gd3_ascii);
 	free(gd3_data);
 
@@ -77,17 +75,18 @@ int main() {
 	fread(&data_offset, 4, 1, file);
 	fseek(file, data_offset - 4, SEEK_CUR);
 
-	size_t wait = 0;
+	WaveoutDevice waveout(2, 49716, 8192);
 
+	OPL opl;
+	OPL_reset(&opl);
+
+	unsigned int wait = 0;
 
 	while (running) {		
-		int16_t* buffer = waveout_get_current_buffer();
-		if (buffer != NULL) {
-			int16_t* buffer_end = buffer + buffer_size;
-			while(buffer < buffer_end) {
-				/*OPL3_GenerateResampled(&chip, buffer);
-				buffer += 2;*/
-				
+		auto b = waveout.get_current_buffer();
+		if (b != nullptr) {
+			auto buffer = b->begin();
+			while(buffer != b->end()) {
 				int16_t sample = OPL_calc(&opl);
 				*buffer++ = sample;				
 
@@ -114,13 +113,13 @@ int main() {
 					else if (command == 0x61) {
 						uint16_t samples;
 						fread(&samples, 2, 1, file);
-						wait += samples * 1.13;
+						wait += (unsigned int)(samples * 1.13);
 					}
 					else if (command == 0x62) {
-						wait += 735 * 1.13;
+						wait += (unsigned int)(735 * 1.13);
 					}
 					else if (command == 0x63) {
-						wait += 882 * 1.13;
+						wait += (unsigned int)(882 * 1.13);
 					}
 					else if (command == 0x66) {
 						if (loop_offset != 0) {
@@ -132,7 +131,7 @@ int main() {
 					}
 					else if ((command & 0x70) == 0x70) {
 						uint8_t num_waits = (wait & 0x0F) + 1;
-						wait += num_waits * 1.13;
+						wait += (unsigned int)((unsigned int)num_waits * 1.13);
 					}
 				}
 				else {
@@ -140,7 +139,7 @@ int main() {
 				}
 			}
 			
-			waveout_queue_buffer();
+			waveout.queue_buffer();
 		}
 		Sleep(16);
 	}
@@ -148,7 +147,6 @@ int main() {
 	done:
 
 	fclose(file);
-	waveout_free();
 
 	return 0;
 }
