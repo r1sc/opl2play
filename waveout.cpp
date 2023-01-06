@@ -1,6 +1,4 @@
 #include <Windows.h>
-#include <stdio.h>
-
 #include "waveout.h"
 
 void CALLBACK waveOutProc(
