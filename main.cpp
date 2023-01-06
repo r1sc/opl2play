@@ -1,7 +1,6 @@
 #include <Windows.h>
-#include <stdint.h>
+#include <cstdint>
 #include <stdio.h>
-#include <math.h>
 #include <iostream>
 
 #include "waveout.h"
@@ -97,18 +96,7 @@ int main(const int argc, const char** argv) {
 					if (command == 0x5A) {
 						uint8_t address_value[2];
 						fread(address_value, 1, 2, file);
-						//OPL3_WriteRegBuffered(&chip, address_value[0], address_value[1]);
 						OPL_writeReg(&opl, (uint32_t)address_value[0], address_value[1]);
-					}
-					else if (command == 0x5E) {
-						uint8_t address_value[2];
-						fread(address_value, 1, 2, file);
-						//OPL3_WriteRegBuffered(&chip, address_value[0], address_value[1]);
-					}
-					else if (command == 0x5F) {
-						uint8_t address_value[2];
-						fread(address_value, 1, 2, file);
-						//OPL3_WriteRegBuffered(&chip, address_value[0] | 0x100, address_value[1]);
 					}
 					else if (command == 0x61) {
 						uint16_t samples;
