@@ -3,3 +3,4 @@ x64/
 *.vcxproj.user
 *.vcxproj.filters
 *.ixx
+vgms/
