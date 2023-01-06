@@ -143,12 +143,10 @@
   <ItemGroup>
     <ClCompile Include="emu8950.c" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="opl3.c" />
     <ClCompile Include="waveout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emu8950.h" />
-    <ClInclude Include="opl3.h" />
     <ClInclude Include="waveout.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
